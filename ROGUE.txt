@@ -1,0 +1,32 @@
+suppressMessages(library(ROGUE))
+suppressMessages(library(ggplot2))
+suppressMessages(library(tidyverse))
+library(Seurat)
+
+merged <- readRDS("~/merged_r_annotation.rds")
+
+expr <- merged@assays$RNA@counts %>% as.data.frame()
+meta <- merged@meta.data %>% as.data.frame()
+
+expr[1:5, 1:4]
+head(meta)
+
+expr <- matr.filter(expr, min.cells = 10, min.genes = 10)
+ent.res <- SE_fun(expr)
+head(ent.res)
+SEplot(ent.res)
+
+rogue.value <- CalculateRogue(ent.res, platform = "UMI")
+rogue.value
+
+rogue.res <- rogue(expr, labels = meta$cell_type, samples = meta$sample, platform = "UMI", span = 0.9)
+rogue.res
+rogue.boxplot(rogue.res)
+saveRDS(rogue.res,'~/rogue.res_merged_celltype.rds')
+
+rogue.res <- rogue(expr, labels = meta$cluster_num, samples = meta$sample, platform = "UMI", span = 0.9)
+rogue.res
+rogue.boxplot(rogue.res)
+saveRDS(rogue.res,'~/rogue.res_merged_clusternum.rds')
+
+

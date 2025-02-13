@@ -1,0 +1,13 @@
+library(Seurat)
+
+merged <- readRDS("~/merged_r_annotation.rds")
+
+markers <- FindAllMarkers(
+  merged,
+  only.pos = TRUE,
+  min.pct = 0.25,
+  logfc.threshold = 0.25
+)
+
+saveRDS(markers, '~/markers.rds')
+write.csv(markers, '~/markers.csv')
