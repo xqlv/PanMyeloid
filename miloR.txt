@@ -65,6 +65,14 @@ da_results$cell_type <- ifelse(da_results$cell_type_fraction < 0.7, "Mixed", da_
 
 sub_da_results <- subset(da_results, cell_type != 'Mixed')
 sub_da_results$cell_type <- factor(sub_da_results$cell_type,
-                                   levels = rev(c('TLF_MP', 'MHCII_MP', 'TREM2_MP', 'CCR2_MP', 'cMO', 'ncMO', 'cDC1', 'cDC2', 'Mast')))
+                                   levels = rev(c('TLF+ Mac',
+                                                  'MHCIIhi Mac',
+                                                  'TREM2+ Mac',
+                                                  'CCR2+ Mac',
+                                                  'cMO',
+                                                  'ncMO',
+                                                  'cDC1',
+                                                  'cDC2',
+                                                  'Mast')))
 
 plotDAbeeswarm(sub_da_results, group.by = "cell_type")

@@ -11,6 +11,10 @@ library(ggprism)
 library(tidyverse)
 
 seurat.obj <- readRDS("~/merged_r_annotation.rds")
+seurat.obj <- subset(seurat.obj,
+                     subset = cell_type %in% c('MHCIIhi Mac', 'TREM2+ Mac', 'CCR2+ Mac', 'cMO', 'ncMO', 'cDC1', 'cDC2'))
+seurat.obj <- subset(seurat.obj,
+                     subset = disease %in% c('AS','AMI','ICM','ACM','DCM','HCM'))
 
 set.seed(12345)
 data <- GetAssayData(seurat.obj,assay = "RNA",slot = "counts")
