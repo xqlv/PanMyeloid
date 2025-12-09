@@ -1,0 +1,113 @@
+library(Seurat)
+library(monocle3)
+library(ggplot2)
+library(dittoSeq)
+library(reshape2)
+library(dplyr)
+library(stringr)
+library(ggpubr)
+library(RColorBrewer)
+library(ggprism)
+library(tidyverse)
+
+seurat.obj <- readRDS("~/merged_r_annotation.rds")
+seurat.obj <- subset(seurat.obj,
+                     subset = cell_type %in% c('MHCIIhi Mac', 'TREM2+ Mac', 'CCR2+ Mac', 'cMO', 'ncMO', 'cDC1', 'cDC2'))
+seurat.obj <- subset(seurat.obj,
+                     subset = disease %in% c('AS','AMI','ICM','ACM','DCM','HCM'))
+
+set.seed(12345)
+data <- GetAssayData(seurat.obj,assay = "RNA",slot = "counts")
+data <- data[rowSums(data>0)>=3,]
+dim(data)
+cell_metadata <- seurat.obj@meta.data
+gene_annotation <- data.frame(gene_short_name=rownames(data))
+rownames(gene_annotation) <- rownames(data)
+
+cds <- new_cell_data_set(data, cell_metadata = cell_metadata, gene_metadata = gene_annotation)
+cds <- preprocess_cds(cds,num_dim = 50)
+plot_pc_variance_explained(cds)
+
+cds <- reduce_dimension(cds,preprocess_method = "PCA")
+colnames(colData(cds))
+p1 <- plot_cells(cds,reduction_method = "UMAP",color_cells_by = "cell_type")+scale_color_manual(values = c('#E84B35','#F89E1E','#92D2C3','#95CC5E','#00A489','#7E6148','#B09C85'))
+p1
+
+cds.embed <- cds@int_colData$reducedDims$UMAP
+int.embed <- Embeddings(seurat.obj,reduction = "umap")
+int.embed <- int.embed[rownames(cds.embed),]
+cds@int_colData$reducedDims$UMAP <- int.embed
+p2 <- plot_cells(cds,reduction_method = "UMAP",color_cells_by = "cell_type")+ scale_color_manual(values = c('#E84B35','#F89E1E','#92D2C3','#95CC5E','#00A489','#7E6148','#B09C85'))
+p2
+
+cds <- cluster_cells(cds,
+                     # resolution = 0.001,
+                     # k=40,
+                     random_seed=18,
+                     verbose=T)
+cds@clusters$UMAP$clusters <- seurat.obj$cell_type
+plot_cells(cds,color_cells_by = "partition")
+
+p1 <- plot_cells(cds,group_cells_by = 'cluster')+ scale_color_manual(values = c('#E84B35','#F89E1E','#92D2C3','#95CC5E','#00A489','#7E6148','#B09C85'))
+p1
+
+cds <- learn_graph(cds, verbose =T,
+                   use_partition=T,
+                   close_loop=F,
+                   learn_graph_control=
+                     list(minimal_branch_len=10,rann.k=45)  )
+
+p <- plot_cells(cds, 
+                color_cells_by = "cluster", 
+                label_groups_by_cluster=T,
+                label_leaves=T, 
+                label_branch_points=T,
+                cell_size = 0.5,
+                group_label_size=4)+
+  scale_color_manual(values = c('#E84B35','#F89E1E','#92D2C3','#95CC5E','#00A489','#7E6148','#B09C85'))
+p
+
+cds <- order_cells(cds)
+
+p1 <- plot_cells(cds,
+                 color_cells_by = "pseudotime",
+                 label_branch_points = FALSE,
+                 label_leaves = F)
+p1
+p2 <- DimPlot(seurat.obj,
+              group.by = "cell_type",
+              cols = c('#E84B35','#F89E1E','#92D2C3','#95CC5E','#00A489','#7E6148','#B09C85'),
+              label = T)
+p2
+p2|p1
+
+p3 <- plot_cells(cds = cds,
+                 color_cells_by = "pseudotime",
+                 show_trajectory_graph = F,
+                 trajectory_graph_color = "white",
+                 trajectory_graph_segment_size = 0.5,
+                 graph_label_size = 2,
+                 cell_size = 1,
+                 label_cell_groups = F,
+                 label_groups_by_cluster = F,
+                 label_branch_points = F,
+                 label_roots = F,
+                 label_leaves = F) 
+p2|p3
+
+cds_CCR2 <- choose_graph_segments(cds)
+plot_genes_in_pseudotime(cds[features_interest,colnames(cds_CCR2)], 
+                         color_cells_by = 'cell_type',
+                         min_expr = NULL, # min_expr = 0.5
+                         ncol = 2)+scale_color_manual(values = c('#E84B35','#F89E1E','#92D2C3','#95CC5E','#00A489','#7E6148','#B09C85'))
+Track_genes_CCR2 <- graph_test(cds[,colnames(cds_CCR2)], neighbor_graph = 'principal_graph',cores = 6)
+saveRDS(Track_genes_CCR2, '~/Track_genes_CCR2.rds')
+Track_genes_CCR2 <- Track_genes_CCR2[,c(5,2,3,4,1,6)] %>% filter(q_value < 1e-3)
+write.csv(Track_genes_CCR2, '~/Track_genes_CCR2.csv')
+
+
+
+
+
+
+
